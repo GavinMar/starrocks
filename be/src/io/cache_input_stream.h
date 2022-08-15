@@ -42,6 +42,7 @@ private:
     int64_t _offset;
     std::string _buffer;
     Stats _stats;
+    int64_t _size;
 };
 
 } // namespace starrocks::io

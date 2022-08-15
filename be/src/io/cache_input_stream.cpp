@@ -12,11 +12,12 @@ namespace starrocks::io {
 
 CacheInputStream::CacheInputStream(const std::string& filename, std::shared_ptr<SeekableInputStream> stream)
         : _filename(filename), _stream(stream), _offset(0) {
-    _cache_key.resize(16);
+    _cache_key.resize(8);
     char* data = _cache_key.data();
     uint64_t hash_value = HashUtil::hash64(filename.data(), filename.size(), 0);
     memcpy(data, &hash_value, sizeof(hash_value));
     _buffer.reserve(BLOCK_SIZE);
+    _size = _stream->get_size().value();
 }
 
 StatusOr<int64_t> CacheInputStream::read(void* out, int64_t count) {
@@ -29,29 +30,30 @@ StatusOr<int64_t> CacheInputStream::read(void* out, int64_t count) {
     for (int64_t i = start_block_id; i <= end_block_id; i++) {
         int64_t off = i * BLOCK_SIZE;
         int64_t size = std::min(BLOCK_SIZE, end - off);
+        int64_t load_size = std::min(BLOCK_SIZE, _size - off);
 
         VLOG_FILE << "[CacheInputStream] offset = " << _offset << ", end = " << end << ", block_id = " << i
-                  << ", off = " << off << ", size = " << size;
+                  << ", off = " << off << ", size = " << size << " , load_size = " << load_size;
 
         StatusOr<size_t> st;
 
         {
             SCOPED_RAW_TIMER(&_stats.read_cache_ns);
             _stats.read_cache_count += 1;
-            st = cache->read_cache(_cache_key, off, size, _buffer.data());
+            st = cache->read_cache(_cache_key, off, load_size, _buffer.data());
         }
         if (st.status().is_not_found()) {
-            RETURN_IF_ERROR(_stream->read_at_fully(off, _buffer.data(), size));
+            RETURN_IF_ERROR(_stream->read_at_fully(off, _buffer.data(), load_size));
             {
                 SCOPED_RAW_TIMER(&_stats.write_cache_ns);
                 _stats.write_cache_count += 1;
-                _stats.write_cache_bytes += size;
-                RETURN_IF_ERROR(cache->write_cache(_cache_key, off, size, _buffer.data()));
+                _stats.write_cache_bytes += load_size;
+                RETURN_IF_ERROR(cache->write_cache(_cache_key, off, load_size, _buffer.data()));
             }
         } else if (!st.ok()) {
             return st;
         } else {
-            size = st.value();
+            // size = st.value();
             _stats.read_cache_bytes += size;
         }
 
