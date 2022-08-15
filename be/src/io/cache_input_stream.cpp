@@ -10,11 +10,6 @@
 
 namespace starrocks::io {
 
-void CacheInputStream::make_cache_key(uint64_t offset) {
-    char* data = _cache_key.data();
-    memcpy(data + 8, &offset, sizeof(offset));
-}
-
 CacheInputStream::CacheInputStream(const std::string& filename, std::shared_ptr<SeekableInputStream> stream)
         : _filename(filename), _stream(stream), _offset(0) {
     _cache_key.resize(16);
@@ -34,7 +29,6 @@ StatusOr<int64_t> CacheInputStream::read(void* out, int64_t count) {
     for (int64_t i = start_block_id; i <= end_block_id; i++) {
         int64_t off = i * BLOCK_SIZE;
         int64_t size = std::min(BLOCK_SIZE, end - off);
-        make_cache_key(off);
 
         VLOG_FILE << "[CacheInputStream] offset = " << _offset << ", end = " << end << ", block_id = " << i
                   << ", off = " << off << ", size = " << size;
@@ -57,6 +51,7 @@ StatusOr<int64_t> CacheInputStream::read(void* out, int64_t count) {
         } else if (!st.ok()) {
             return st;
         } else {
+            size = st.value();
             _stats.read_cache_bytes += size;
         }
 

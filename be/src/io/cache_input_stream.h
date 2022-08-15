@@ -36,8 +36,6 @@ public:
     const Stats& stats() { return _stats; }
 
 private:
-    void make_cache_key(uint64_t offset);
-
     std::string _cache_key;
     std::string _filename;
     std::shared_ptr<SeekableInputStream> _stream;

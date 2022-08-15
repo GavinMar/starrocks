@@ -166,8 +166,23 @@ int main(int argc, char** argv) {
         return -1;
     }
 #endif
+
     starrocks::BlockCache* cache = starrocks::BlockCache::instance();
-    cache->init();
+    starrocks::CacheOptions cache_options;
+    cache_options.mem_space_size = starrocks::config::block_cache_mem_size;
+    std::vector<starrocks::StorePath> paths;
+    auto parse_res = starrocks::parse_conf_store_paths(starrocks::config::block_cache_disk_path, &paths);
+    if (!parse_res.ok()) {
+        LOG(FATAL) << "parse config storage path failed, path=" << starrocks::config::storage_root_path;
+        exit(-1);
+    }
+    for (auto& p : paths) {
+        cache_options.disk_spaces.push_back(
+                { .path = p.path, .size = static_cast<size_t>(starrocks::config::block_cache_disk_size) });
+    }
+    cache->init(cache_options);
+    // TODO: move block size to cache options.
+    cache->set_block_size(starrocks::config::block_cache_block_size);
 
     Aws::SDKOptions aws_sdk_options;
     if (starrocks::config::aws_sdk_logging_trace_enabled) {
@@ -175,13 +190,7 @@ int main(int argc, char** argv) {
     }
     Aws::InitAPI(aws_sdk_options);
 
-    std::vector<starrocks::StorePath> paths;
     if (!without_storage) {
-        auto olap_res = starrocks::parse_conf_store_paths(starrocks::config::storage_root_path, &paths);
-        if (!olap_res.ok()) {
-            LOG(FATAL) << "parse config storage path failed, path=" << starrocks::config::storage_root_path;
-            exit(-1);
-        }
         auto it = paths.begin();
         for (; it != paths.end();) {
             if (!starrocks::check_datapath_rw(it->path)) {

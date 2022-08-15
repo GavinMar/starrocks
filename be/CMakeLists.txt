@@ -144,8 +144,11 @@ message(STATUS ${Boost_LIBRARIES})
 set(GPERFTOOLS_HOME "${THIRDPARTY_DIR}/gperftools")
 
 # Set all libraries
+#add_library(gflags STATIC IMPORTED)
+#set_target_properties(gflags PROPERTIES IMPORTED_LOCATION ${THIRDPARTY_DIR}/lib/libgflags_debug.a)
+set(CACHELIB_DIR "$ENV{CACHELIB_DIR}")
 add_library(gflags STATIC IMPORTED)
-set_target_properties(gflags PROPERTIES IMPORTED_LOCATION ${THIRDPARTY_DIR}/lib/libgflags.a)
+set_target_properties(gflags PROPERTIES IMPORTED_LOCATION ${CACHELIB_DIR}/lib/libgflags_debug.a)
 
 add_library(glog STATIC IMPORTED)
 set_target_properties(glog PROPERTIES IMPORTED_LOCATION ${THIRDPARTY_DIR}/lib/libglog.a)

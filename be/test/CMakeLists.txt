@@ -126,6 +126,7 @@ set(EXEC_FILES
         ./formats/parquet/metadata_test.cpp
         ./formats/parquet/group_reader_test.cpp
         ./formats/parquet/file_reader_test.cpp
+        ./cache/block_cache_test.cpp
         ./geo/geo_types_test.cpp
         ./geo/wkt_parse_test.cpp
         ./http/http_utils_test.cpp
