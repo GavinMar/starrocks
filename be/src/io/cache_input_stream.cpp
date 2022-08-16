@@ -26,16 +26,18 @@ CacheInputStream::CacheInputStream(const std::string& filename, std::shared_ptr<
 
 StatusOr<int64_t> CacheInputStream::read(void* out, int64_t count) {
     BlockCache* cache = BlockCache::instance();
+    int64_t end = _offset + count;
     int64_t start_block_id = _offset / BLOCK_SIZE;
-    int64_t shift = _offset - start_block_id * BLOCK_SIZE;
-    int64_t end_block_id = (_offset + count - 1 + BLOCK_SIZE) / BLOCK_SIZE;
+    int64_t end_block_id = (end - 1) / BLOCK_SIZE;
 
     char* p = static_cast<char*>(out);
     for (int64_t i = start_block_id; i <= end_block_id; i++) {
         int64_t off = i * BLOCK_SIZE;
-        int64_t size = std::min(BLOCK_SIZE, _offset + count - off);
-
+        int64_t size = std::min(BLOCK_SIZE, end - off);
         make_cache_key(off);
+
+        VLOG_FILE << "[CacheInputStream] offset = " << _offset << ", end = " << end << ", block_id = " << i
+                  << ", off = " << off << ", size = " << size;
 
         StatusOr<size_t> st;
 
@@ -60,6 +62,7 @@ StatusOr<int64_t> CacheInputStream::read(void* out, int64_t count) {
 
         const char* src = _buffer.data();
         if (i == start_block_id) {
+            int64_t shift = _offset - start_block_id * BLOCK_SIZE;
             DCHECK(size > shift);
             src += shift;
             size -= shift;
