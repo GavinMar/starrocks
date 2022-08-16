@@ -7,9 +7,9 @@
 
 namespace starrocks {
 
-BlockCache& BlockCache::get_instance() {
+BlockCache* BlockCache::instance() {
     static BlockCache cache;
-    return  cache;
+    return &cache;
 }
 
 Status BlockCache::set_block_size(size_t block_size) {
@@ -19,7 +19,7 @@ Status BlockCache::set_block_size(size_t block_size) {
 }
 
 Status BlockCache::set_mem_space(size_t mem_size) {
-    // 
+    //
     return Status::OK();
 }
 
@@ -36,7 +36,8 @@ Status BlockCache::write_cache(const CacheKey& cache_key, off_t offset, size_t s
 
 StatusOr<size_t> BlockCache::read_cache(const CacheKey& cache_key, off_t offset, size_t size, void* buffer) {
     //
-    return (size_t)0;
+    // return (size_t)0;
+    return Status::NotFound("");
 }
 
 Status BlockCache::remove_cache(const CacheKey& cache_key, off_t offset, size_t size) {

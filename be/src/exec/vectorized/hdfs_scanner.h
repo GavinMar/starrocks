@@ -9,6 +9,7 @@
 #include "exprs/expr.h"
 #include "exprs/expr_context.h"
 #include "fs/fs_hdfs.h"
+#include "io/cache_input_stream.h"
 #include "runtime/descriptors.h"
 #include "runtime/runtime_state.h"
 #include "util/runtime_profile.h"
@@ -69,6 +70,13 @@ struct HdfsScanProfile {
     RuntimeProfile::Counter* io_counter = nullptr;
     RuntimeProfile::Counter* column_read_timer = nullptr;
     RuntimeProfile::Counter* column_convert_timer = nullptr;
+
+    RuntimeProfile::Counter* cache_read_counter = nullptr;
+    RuntimeProfile::Counter* cache_read_bytes = nullptr;
+    RuntimeProfile::Counter* cache_read_timer = nullptr;
+    RuntimeProfile::Counter* cache_write_counter = nullptr;
+    RuntimeProfile::Counter* cache_write_bytes = nullptr;
+    RuntimeProfile::Counter* cache_write_timer = nullptr;
 };
 
 struct HdfsScannerParams {
@@ -260,6 +268,7 @@ protected:
     std::vector<ExprContext*> _min_max_conjunct_ctxs;
     std::unique_ptr<RandomAccessFile> _raw_file;
     std::unique_ptr<RandomAccessFile> _file;
+    std::shared_ptr<io::CacheInputStream> _cache_input_stream;
 };
 
 } // namespace starrocks::vectorized
