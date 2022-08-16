@@ -6,11 +6,12 @@
 
 namespace starrocks {
 
-typedef std::string CacheKey;
-
 class BlockCache {
 public:
+    typedef std::string CacheKey;
+
     static BlockCache* instance();
+    void init();
 
     // Set block size as a logical cache unit
     Status set_block_size(size_t block_size);

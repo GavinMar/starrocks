@@ -795,6 +795,7 @@ CONF_Int16(jdbc_connection_pool_size, "8");
 // The default value is set as the THREAD_POOL_SIZE of RoutineLoadTaskScheduler of FE.
 CONF_Int32(internal_service_async_thread_num, "10");
 
+CONF_Bool(block_cache_enable, "true");
 CONF_String(block_cache_disk_path, "${STARROCKS_HOME}/block_cache/");
 CONF_Int64(block_cache_disk_size, "21474836480"); // 20GB
 CONF_Int64(block_cache_block_size, "4194304");    // 4MB

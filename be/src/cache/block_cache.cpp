@@ -10,6 +10,11 @@ namespace starrocks {
 
 BlockCache* BlockCache::instance() {
     static BlockCache cache;
+    return &cache;
+}
+
+void BlockCache::init() {
+    BlockCache& cache = *this;
     cache.set_block_size(config::block_cache_block_size);
     cache.set_mem_space(config::block_cache_mem_size);
     std::vector<StorePath> paths;
@@ -21,7 +26,6 @@ BlockCache* BlockCache::instance() {
         sizes.emplace_back(config::block_cache_disk_size);
     }
     cache.set_disk_space(dirs, sizes);
-    return &cache;
 }
 
 Status BlockCache::set_block_size(size_t block_size) {
