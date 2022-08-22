@@ -12,10 +12,11 @@ namespace starrocks::io {
 
 CacheInputStream::CacheInputStream(const std::string& filename, std::shared_ptr<SeekableInputStream> stream)
         : _filename(filename), _stream(stream), _offset(0) {
-    _cache_key.resize(8);
-    char* data = _cache_key.data();
-    uint64_t hash_value = HashUtil::hash64(filename.data(), filename.size(), 0);
-    memcpy(data, &hash_value, sizeof(hash_value));
+    // _cache_key.resize(8);
+    // char* data = _cache_key.data();
+    // uint64_t hash_value = HashUtil::hash64(filename.data(), filename.size(), 0);
+    // memcpy(data, &hash_value, sizeof(hash_value));
+    _cache_key = _filename;
     _buffer.reserve(BLOCK_SIZE);
     _size = _stream->get_size().value();
 }
