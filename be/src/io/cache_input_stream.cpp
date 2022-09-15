@@ -1,5 +1,4 @@
 // This file is licensed under the Elastic License 2.0. Copyright 2021-present, StarRocks Limited.
-
 #include "io/cache_input_stream.h"
 
 #include <fmt/format.h>
@@ -36,21 +35,26 @@ StatusOr<int64_t> CacheInputStream::read(void* out, int64_t count) {
         VLOG_FILE << "[CacheInputStream] offset = " << _offset << ", end = " << end << ", block_id = " << i
                   << ", off = " << off << ", size = " << size << " , load_size = " << load_size;
 
-        StatusOr<size_t> st;
+        //StatusOr<size_t> st;
+        Status st;
 
+        char* src = nullptr;
         {
             SCOPED_RAW_TIMER(&_stats.read_cache_ns);
             _stats.read_cache_count += 1;
-            st = cache->read_cache(_cache_key, off, load_size, _buffer.data());
+            //st = cache->read_cache(_cache_key, off, load_size, _buffer.data());
+            st = cache->read_cache_zero_copy(_cache_key, off, load_size, (const char**)&src);
         }
-        if (st.status().is_not_found()) {
+        if (st.is_not_found()) {
             RETURN_IF_ERROR(_stream->read_at_fully(off, _buffer.data(), load_size));
             {
                 SCOPED_RAW_TIMER(&_stats.write_cache_ns);
                 _stats.write_cache_count += 1;
                 _stats.write_cache_bytes += load_size;
-                RETURN_IF_ERROR(cache->write_cache(_cache_key, off, load_size, _buffer.data()));
+                Status r = cache->write_cache(_cache_key, off, load_size, _buffer.data());
+                LOG_IF(ERROR, !r.ok()) << "write block cache failed, errmsg: " << r.get_error_msg();
             }
+            src = _buffer.data();
         } else if (!st.ok()) {
             return st;
         } else {
@@ -58,7 +62,6 @@ StatusOr<int64_t> CacheInputStream::read(void* out, int64_t count) {
             _stats.read_cache_bytes += size;
         }
 
-        const char* src = _buffer.data();
         if (i == start_block_id) {
             int64_t shift = _offset - start_block_id * BLOCK_SIZE;
             DCHECK(size > shift);

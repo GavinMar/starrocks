@@ -61,12 +61,8 @@ Status BlockCache::write_cache(const CacheKey& cache_key, off_t offset, size_t s
         std::string block_key = fmt::format("{}/{}", cache_key, index);
         const char* block_buf = buffer + off_in_buf;
         const size_t block_size = std::min(size - off_in_buf, _block_size);
-        //uint64_t hash_value = HashUtil::hash64(block_buf, block_size, 0);
-        uint64_t hash_value = orc::Murmur3::hash64((const uint8_t*)block_buf, block_size);
+        //uint64_t hash_value = orc::Murmur3::hash64((const uint8_t*)block_buf, block_size);
         RETURN_IF_ERROR(_kv_cache->write_cache(block_key, block_buf, block_size, ttl_seconds));
-        LOG(INFO) << "write block key: " << block_key
-                  << ", off: " << offset + off_in_buf
-                  << ", size: " << block_size << ", hash: " << hash_value;
         off_in_buf += block_size;
     }
 
@@ -96,16 +92,31 @@ StatusOr<size_t> BlockCache::read_cache(const CacheKey& cache_key, off_t offset,
         char* block_buf = buffer + off_in_buf;
         auto res = _kv_cache->read_cache(block_key, block_buf);
         RETURN_IF_ERROR(res);
-        //uint64_t hash_value = HashUtil::hash64(block_buf, res.value(), 0);
-        uint64_t hash_value = orc::Murmur3::hash64((const uint8_t*)block_buf, res.value());
-        LOG(INFO) << "read block key: " << block_key
-                  << ", off: " << offset + off_in_buf
-                  << ", size: " << res.value() << ", hash: " << hash_value;
+        //uint64_t hash_value = orc::Murmur3::hash64((const uint8_t*)block_buf, res.value());
         read_size += res.value();
         off_in_buf += _block_size;
     }
 
     return read_size;
+}
+
+Status BlockCache::read_cache_zero_copy(const CacheKey& cache_key, off_t offset, size_t size, const char** buf) {
+    if (offset % _block_size != 0) {
+        LOG(WARNING) << "read block key: " << cache_key << " with invalid offset: "
+                     << offset << ", size: " << size;
+        return Status::InvalidArgument(strings::Substitute("offset and size must be aligned by block size $0",
+                                                            _block_size));
+    }
+    if (!buf) {
+        return Status::InvalidArgument("invalid data buffer");
+    }
+    if (size == 0) {
+        return Status::OK();
+    }
+
+    size_t index = offset / _block_size;
+    std::string block_key = fmt::format("{}/{}", cache_key, index);
+    return _kv_cache->read_cache_zero_copy(block_key, buf);
 }
 
 Status BlockCache::remove_cache(const CacheKey& cache_key, off_t offset, size_t size) {

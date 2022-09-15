@@ -13,6 +13,7 @@ class FbCacheLib : public KvCache {
 public:
     using Cache = facebook::cachelib::LruAllocator;
     using PoolId = facebook::cachelib::PoolId;
+    using ReadHandle = facebook::cachelib::LruAllocator::ReadHandle;
 
     FbCacheLib() = default;
     ~FbCacheLib();
@@ -22,6 +23,8 @@ public:
     Status write_cache(const std::string& key, const char* value, size_t size, size_t ttl_seconds) override;
 
     StatusOr<size_t> read_cache(const std::string& key, char* value) override;
+
+    Status read_cache_zero_copy(const std::string& key, const char** buf) override;
 
     Status remove_cache(const std::string& key) override;
 

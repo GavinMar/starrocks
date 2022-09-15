@@ -798,7 +798,8 @@ CONF_Int32(internal_service_async_thread_num, "10");
 CONF_Bool(block_cache_enable, "true");
 CONF_String(block_cache_disk_path, "${STARROCKS_HOME}/block_cache/");
 CONF_Int64(block_cache_disk_size, "21474836480"); // 20GB
-CONF_Int64(block_cache_block_size, "4194304");    // 4MB
+//CONF_Int64(block_cache_block_size, "4194304");    // 4MB
+CONF_Int64(block_cache_block_size, "1048576");
 CONF_Int64(block_cache_mem_size, "2147483648");   // 2GB
 
 } // namespace starrocks::config

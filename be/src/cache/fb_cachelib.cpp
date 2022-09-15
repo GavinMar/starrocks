@@ -58,6 +58,16 @@ StatusOr<size_t> FbCacheLib::read_cache(const std::string& key, char* value) {
    return size;
 }
 
+Status FbCacheLib::read_cache_zero_copy(const std::string& key, const char** buf) {
+   auto handle = _cache->find(key);
+   if (handle) {
+       *buf = (const char*)(handle->getMemory());
+        return Status::OK();
+   } else {
+        return Status::NotFound("not found cachelib item");
+   }
+}
+
 Status FbCacheLib::remove_cache(const std::string& key) {
     _cache->remove(key);
     return Status::OK();

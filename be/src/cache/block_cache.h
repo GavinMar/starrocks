@@ -30,6 +30,8 @@ public:
     // will be returned. The offset and size must be aligned by block size.
     StatusOr<size_t> read_cache(const CacheKey& cache_key, off_t offset, size_t size, char* buffer);
 
+    Status read_cache_zero_copy(const CacheKey& cache_key, off_t offset, size_t size, const char** buf);
+
     // Remove data from cache. The offset and size must be aligned by block size
     Status remove_cache(const CacheKey& cache_key, off_t offset, size_t size);
 
