@@ -29,7 +29,6 @@ namespace starrocks::io {
 CacheInputStream::CacheInputStream(const std::string& filename, std::shared_ptr<SeekableInputStream> stream)
         : _filename(filename), _stream(std::move(stream)), _offset(0) {
     _size = _stream->get_size().value();
-#ifdef WITH_BLOCK_CACHE
     // _cache_key = _filename;
     // use hash(filename) as cache key.
     _cache_key.resize(16);
@@ -39,10 +38,8 @@ CacheInputStream::CacheInputStream(const std::string& filename, std::shared_ptr<
     int64_t file_size = _size;
     memcpy(data + 8, &file_size, sizeof(file_size));
     _buffer.reserve(BlockCache::instance()->block_size());
-#endif
 }
 
-#ifdef WITH_BLOCK_CACHE
 StatusOr<int64_t> CacheInputStream::read(void* out, int64_t count) {
     BlockCache* cache = BlockCache::instance();
     count = std::min(_size - _offset, count);
@@ -123,14 +120,6 @@ StatusOr<int64_t> CacheInputStream::read(void* out, int64_t count) {
     DCHECK(p == pe);
     return count;
 }
-#else
-StatusOr<int64_t> CacheInputStream::read(void* out, int64_t count) {
-    int64_t load_size = std::min(count, _size - _offset);
-    RETURN_IF_ERROR(_stream->read_at_fully(_offset, out, load_size));
-    _offset += load_size;
-    return load_size;
-}
-#endif
 
 Status CacheInputStream::seek(int64_t offset) {
     if (offset < 0) return Status::InvalidArgument(fmt::format("Invalid offset {}", offset));
