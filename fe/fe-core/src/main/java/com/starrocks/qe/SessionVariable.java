@@ -335,8 +335,14 @@ public class SessionVariable implements Serializable, Writable, Cloneable {
 
     public static final String WINDOW_PARTITION_MODE = "window_partition_mode";
 
+    public static final String ENABLE_SCAN_DATA_CACHE = "enable_scan_data_cache";
+    public static final String ENABLE_POPULATE_DATA_CACHE = "enable_populate_data_cache";
+    // The following configurations will be deprecated, and we use the `data_cache` prefix instead.
+    // But it is temporarily necessary to keep them for a period of time to be compatible with
+    // the old session variable names.
     public static final String ENABLE_SCAN_BLOCK_CACHE = "enable_scan_block_cache";
     public static final String ENABLE_POPULATE_BLOCK_CACHE = "enable_populate_block_cache";
+
     public static final String HUDI_MOR_FORCE_JNI_READER = "hudi_mor_force_jni_reader";
     public static final String IO_TASKS_PER_SCAN_OPERATOR = "io_tasks_per_scan_operator";
     public static final String CONNECTOR_IO_TASKS_PER_SCAN_OPERATOR = "connector_io_tasks_per_scan_operator";
@@ -1013,8 +1019,11 @@ public class SessionVariable implements Serializable, Writable, Cloneable {
         this.enableParallelMerge = enableParallelMerge;
     }
 
-    @VariableMgr.VarAttr(name = ENABLE_SCAN_BLOCK_CACHE)
-    private boolean useScanBlockCache = false;
+    @VariableMgr.VarAttr(name = ENABLE_SCAN_DATA_CACHE, alias = ENABLE_SCAN_BLOCK_CACHE)
+    private boolean useScanDataCache = false;
+
+    @VariableMgr.VarAttr(name = ENABLE_POPULATE_DATA_CACHE, alias = ENABLE_SCAN_BLOCK_CACHE)
+    private boolean enablePopulateDataCache = true;
 
     @VariableMgr.VarAttr(name = IO_TASKS_PER_SCAN_OPERATOR)
     private int ioTasksPerScanOperator = 4;
@@ -1033,9 +1042,6 @@ public class SessionVariable implements Serializable, Writable, Cloneable {
 
     @VariableMgr.VarAttr(name = CONNECTOR_SCAN_USE_QUERY_MEM_RATIO)
     private double connectorScanUseQueryMemRatio = 0.3;
-
-    @VariableMgr.VarAttr(name = ENABLE_POPULATE_BLOCK_CACHE)
-    private boolean enablePopulateBlockCache = true;
 
     @VariableMgr.VarAttr(name = HUDI_MOR_FORCE_JNI_READER)
     private boolean hudiMORForceJNIReader = false;
@@ -2403,8 +2409,8 @@ public class SessionVariable implements Serializable, Writable, Cloneable {
 
         tResult.setAllow_throw_exception((sqlMode & SqlModeHelper.MODE_ALLOW_THROW_EXCEPTION) != 0);
 
-        tResult.setUse_scan_block_cache(useScanBlockCache);
-        tResult.setEnable_populate_block_cache(enablePopulateBlockCache);
+        tResult.setUse_scan_data_cache(useScanDataCache);
+        tResult.setEnable_populate_data_cache(enablePopulateDataCache);
         tResult.setHudi_mor_force_jni_reader(hudiMORForceJNIReader);
         tResult.setIo_tasks_per_scan_operator(ioTasksPerScanOperator);
         tResult.setConnector_io_tasks_per_scan_operator(connectorIoTasksPerScanOperator);

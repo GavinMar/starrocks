@@ -87,14 +87,14 @@ struct HdfsScanProfile {
     RuntimeProfile::Counter* column_read_timer = nullptr;
     RuntimeProfile::Counter* column_convert_timer = nullptr;
 
-    RuntimeProfile::Counter* block_cache_read_counter = nullptr;
-    RuntimeProfile::Counter* block_cache_read_bytes = nullptr;
-    RuntimeProfile::Counter* block_cache_read_timer = nullptr;
-    RuntimeProfile::Counter* block_cache_write_counter = nullptr;
-    RuntimeProfile::Counter* block_cache_write_bytes = nullptr;
-    RuntimeProfile::Counter* block_cache_write_timer = nullptr;
-    RuntimeProfile::Counter* block_cache_write_fail_counter = nullptr;
-    RuntimeProfile::Counter* block_cache_write_fail_bytes = nullptr;
+    RuntimeProfile::Counter* data_cache_read_counter = nullptr;
+    RuntimeProfile::Counter* data_cache_read_bytes = nullptr;
+    RuntimeProfile::Counter* data_cache_read_timer = nullptr;
+    RuntimeProfile::Counter* data_cache_write_counter = nullptr;
+    RuntimeProfile::Counter* data_cache_write_bytes = nullptr;
+    RuntimeProfile::Counter* data_cache_write_timer = nullptr;
+    RuntimeProfile::Counter* data_cache_write_fail_counter = nullptr;
+    RuntimeProfile::Counter* data_cache_write_fail_bytes = nullptr;
 
     RuntimeProfile::Counter* shared_buffered_shared_io_count = nullptr;
     RuntimeProfile::Counter* shared_buffered_shared_io_bytes = nullptr;
@@ -170,8 +170,8 @@ struct HdfsScannerParams {
 
     bool is_lazy_materialization_slot(SlotId slot_id) const;
 
-    bool use_block_cache = false;
-    bool enable_populate_block_cache = false;
+    bool use_data_cache = false;
+    bool enable_populate_data_cache = false;
 
     std::atomic<int32_t>* lazy_column_coalesce_counter;
     bool can_use_any_column = false;

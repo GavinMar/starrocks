@@ -35,9 +35,10 @@ struct CacheOptions {
     bool checksum;
     std::string engine;
     size_t max_concurrent_inserts;
-    // The following options are only valid for cachelib engine currently
-    size_t max_parcel_memory_mb;
-    uint8_t lru_insertion_point;
 };
+
+int64_t parse_mem_size(const std::string& mem_size_str, int64_t mem_limit = -1);
+
+int64_t parse_disk_size(const std::string& disk_path, const std::string& disk_size_str, int64_t disk_limit = -1);
 
 } // namespace starrocks
