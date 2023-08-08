@@ -76,10 +76,7 @@ BlockCache* init_data_cache(GlobalEnv* global_env) {
         BlockCache* cache = BlockCache::instance();
 
         CacheOptions cache_options;
-        int64_t mem_limit = MemInfo::physical_mem();
-        if (global_env->process_mem_tracker()->has_limit()) {
-            mem_limit = global_env->process_mem_tracker()->limit();
-        }
+        int64_t mem_limit = global_env->get_memory_limit();
         cache_options.mem_space_size = parse_mem_size(config::data_cache_mem_size, mem_limit);
 
         std::vector<std::string> paths;

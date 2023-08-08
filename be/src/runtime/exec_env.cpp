@@ -39,6 +39,7 @@
 
 #include "agent/agent_server.h"
 #include "agent/master_info.h"
+#include "block_cache/block_cache.h"
 #include "column/column_pool.h"
 #include "common/config.h"
 #include "common/configbase.h"
@@ -253,10 +254,7 @@ Status GlobalEnv::_init_storage_page_cache() {
 
 int64_t GlobalEnv::get_storage_page_cache_size() {
     std::lock_guard<std::mutex> l(*config::get_mstring_conf_lock());
-    int64_t mem_limit = MemInfo::physical_mem();
-    if (process_mem_tracker()->has_limit()) {
-        mem_limit = process_mem_tracker()->limit();
-    }
+    int64_t mem_limit = get_memory_limit();
     return ParseUtil::parse_mem_spec(config::storage_page_cache_limit, mem_limit);
 }
 
@@ -273,6 +271,13 @@ int64_t GlobalEnv::check_storage_page_cache_size(int64_t storage_cache_limit) {
         LOG(INFO) << "Set storage page cache size " << storage_cache_limit;
     }
     return storage_cache_limit;
+}
+
+int64_t GlobalEnv::get_memory_limit() {
+    if (process_mem_tracker()->has_limit()) {
+        return process_mem_tracker()->limit();
+    }
+    return MemInfo::physical_mem();
 }
 
 template <class... Args>
@@ -482,6 +487,8 @@ Status ExecEnv::init(const std::vector<StorePath>& store_paths, bool as_cn) {
     _heartbeat_flags = new HeartbeatFlags();
     auto capacity = std::max<size_t>(config::query_cache_capacity, 4L * 1024 * 1024);
     _cache_mgr = new query_cache::CacheManager(capacity);
+
+    _block_cache = BlockCache::instance();
 
     _spill_dir_mgr = std::make_shared<spill::DirManager>();
     RETURN_IF_ERROR(_spill_dir_mgr->init());

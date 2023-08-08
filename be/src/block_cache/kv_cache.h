@@ -39,6 +39,10 @@ public:
 
     virtual std::unordered_map<std::string, double> cache_stats() = 0;
 
+    virtual Status update_mem_size(size_t mem_size) = 0;
+
+    virtual Status update_disk_spaces(const std::vector<DirSpace>& spaces) = 0;
+
     virtual Status shutdown() = 0;
 };
 

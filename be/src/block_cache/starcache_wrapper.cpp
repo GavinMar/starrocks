@@ -78,6 +78,19 @@ Status StarCacheWrapper::remove_cache(const std::string& key) {
     return Status::OK();
 }
 
+Status StarCacheWrapper::update_mem_size(size_t mem_size) {
+    _cache->update_mem_size(mem_size);
+}
+
+Status StarCacheWrapper::update_disk_spaces(const std::vector<DirSpace>& spaces) {
+    std::vector<starcache::DirSpace> disk_spaces;
+    disk_spaces.reserve(spaces.size());
+    for (auto& dir : spaces) {
+        disk_spaces.push_back({.path = dir.path, .quota_bytes = dir.size});
+    }
+    return _cache->update_disk_spaces(disk_spaces);
+}
+
 std::unordered_map<std::string, double> StarCacheWrapper::cache_stats() {
     // TODO: fill some statistics information
     std::unordered_map<std::string, double> stats;

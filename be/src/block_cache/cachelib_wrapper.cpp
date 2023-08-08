@@ -98,6 +98,14 @@ Status CacheLibWrapper::remove_cache(const std::string& key) {
     return Status::OK();
 }
 
+Status CacheLibWrapper::update_mem_size(size_t mem_size) {
+    return Status::NotSupported("not support updating memory cache size for cachelib");
+}
+
+Status update_disk_spaces(const std::vector<DirSpace>& spaces) {
+    return Status::NotSupported("not support updating disk cache spaces for cachelib");
+}
+
 std::unordered_map<std::string, double> CacheLibWrapper::cache_stats() {
     const auto navy_stats = _cache->getNvmCacheStatsMap().toMap();
     return navy_stats;

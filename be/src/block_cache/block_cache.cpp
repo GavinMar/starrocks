@@ -127,6 +127,14 @@ Status BlockCache::remove_cache(const CacheKey& cache_key, off_t offset, size_t 
     return _kv_cache->remove_cache(block_key);
 }
 
+Status BlockCache::update_mem_size(size_t mem_size) {
+    return _kv_cache->update_mem_size(mem_size);
+}
+
+Status BlockCache::update_disk_spaces(const std::vector<DirSpace>& spaces) {
+    return _kv_cache->update_disk_spaces(spaces);
+}
+
 Status BlockCache::shutdown() {
     Status st = _kv_cache->shutdown();
     _kv_cache = nullptr;

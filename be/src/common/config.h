@@ -926,7 +926,7 @@ CONF_Int64(max_length_for_to_base64, "200000");
 CONF_Int64(max_length_for_bitmap_function, "1000000");
 
 // Data cache switch
-CONF_mBool(data_cache_enable, "false");
+CONF_Bool(data_cache_enable, "false");
 CONF_mString(data_cache_mem_size, "20%");
 CONF_mString(data_cache_disk_size, "0");
 CONF_mString(data_cache_disk_path, "${STARROCKS_HOME}/data_cache/");

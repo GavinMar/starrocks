@@ -43,6 +43,7 @@
 
 #include "agent/agent_common.h"
 #include "agent/agent_server.h"
+#include "block_cache/block_cache.h"
 #include "common/configbase.h"
 #include "common/logging.h"
 #include "common/status.h"
@@ -88,6 +89,28 @@ Status UpdateConfigAction::update_config(const std::string& name, const std::str
                 StoragePageCache::instance()->set_capacity(cache_limit);
             }
         });
+        _config_callback.emplace("data_cache_mem_size", [&]() {
+            int64_t mem_limit = GlobalEnv::GetInstance()->get_memory_limit();
+            size_t mem_size = parse_mem_size(config::data_cache_mem_size, mem_limit);
+            BlockCache::instance()->update_mem_size(mem_size);
+        });
+        _config_callback.emplace("data_cache_disk_size", [&]() {
+            std::vector<std::string> paths;
+            Status st = parse_conf_data_cache_paths(config::data_cache_disk_path, &paths);
+            if (!st.ok()) {
+                return;
+            }
+            std::vector<DirSpace> disk_spaces;
+            for (auto& p : paths) {
+                int64_t disk_size = parse_disk_size(p, config::data_cache_disk_size);
+                if (disk_size < 0) {
+                    return;
+                }
+                disk_spaces.push_back({.path = p, .size = static_cast<size_t>(disk_size)});
+            }
+            BlockCache::instance()->update_disk_spaces(disk_spaces);
+        });
+        _config_callback.emplace("data_cache_disk_path", _config_callback["data_cache_disk_size"]);
         _config_callback.emplace("max_compaction_concurrency", [&]() {
             StorageEngine::instance()->compaction_manager()->update_max_threads(config::max_compaction_concurrency);
         });

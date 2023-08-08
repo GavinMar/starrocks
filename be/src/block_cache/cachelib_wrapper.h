@@ -51,6 +51,10 @@ public:
 
     Status remove_cache(const std::string& key) override;
 
+    Status update_mem_size(size_t mem_size) override;
+
+    Status update_disk_spaces(const std::vector<DirSpace>& spaces) override;
+
     std::unordered_map<std::string, double> cache_stats() override;
 
     Status shutdown() override;
