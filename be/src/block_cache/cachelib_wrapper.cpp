@@ -42,7 +42,7 @@ Status CacheLibWrapper::init(const CacheOptions& options) {
         }
         nvmConfig.navyConfig.blockCache().setRegionSize(16 * 1024 * 1024);
         nvmConfig.navyConfig.blockCache().setDataChecksum(options.checksum);
-        nvmConfig.navyConfig.setMaxParcelMemoryMB(options.max_parcel_memory_mb);
+        nvmConfig.navyConfig.setMaxParcelMemoryMB(options.max_flying_memory_mb);
         nvmConfig.navyConfig.setMaxConcurrentInserts(options.max_concurrent_inserts);
         config.enableNvmCache(nvmConfig);
     }

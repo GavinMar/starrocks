@@ -926,7 +926,7 @@ CONF_Bool(block_cache_checksum_enable, "false");
 CONF_Int64(block_cache_max_concurrent_inserts, "1500000");
 // Total memory limit for in-flight parcels.
 // Once this is reached, requests will be rejected until the parcel memory usage gets under the limit.
-CONF_Int64(block_cache_max_parcel_memory_mb, "256");
+CONF_Int64(block_cache_max_flying_memory_mb, "256");
 CONF_Bool(block_cache_report_stats, "false");
 // This essentially turns the LRU into a two-segmented LRU. Setting this to 1 means every new insertion
 // will be inserted 1/2 from the end of the LRU, 2 means 1/4 from the end of the LRU, and so on.
@@ -937,6 +937,8 @@ CONF_Int64(block_cache_lru_insertion_point, "1");
 // If not, we need to adjust the default engine based on build switches like "WITH_CACHELIB" and "WITH_STARCACHE".
 CONF_String(block_cache_engine, "");
 
+CONF_Double(block_cache_scheduler_threads_per_cpu, "1.0");
+CONF_Bool(block_cache_async_write_enable, "true");
 CONF_Bool(block_cache_page_cache_enable, "true");
 CONF_Bool(block_cache_adaptor_enable, "false");
 CONF_Int64(block_cache_skip_read_factor, "1");

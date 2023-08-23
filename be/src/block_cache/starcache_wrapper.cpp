@@ -19,6 +19,7 @@
 #include "common/logging.h"
 #include "common/statusor.h"
 #include "gutil/strings/fastmem.h"
+#include "runtime/current_thread.h"
 #include "util/filesystem_util.h"
 
 namespace starrocks {
@@ -33,11 +34,14 @@ Status StarCacheWrapper::init(const CacheOptions& options) {
     opt.enable_disk_checksum = options.checksum;
     opt.max_concurrent_writes = options.max_concurrent_inserts;
     opt.enable_os_page_cache = options.enable_page_cache;
+    opt.scheduler_thread_num_per_cpu = options.scheduler_threads_per_cpu;
+    opt.max_flying_memory_mb = options.max_flying_memory_mb;
     if (options.enable_cache_adaptor) {
         _cache_adaptor.reset(starcache::create_default_adaptor(options.skip_read_factor));
         opt.cache_adaptor = _cache_adaptor.get();
     }
     _cache = std::make_unique<starcache::StarCache>();
+    _enable_async_write = options.enable_async_write;
     return to_status(_cache->init(opt));
 }
 
@@ -45,11 +49,22 @@ Status StarCacheWrapper::write_buffer(const std::string& key, const IOBuffer& bu
     if (!options) {
         return to_status(_cache->set(key, buffer.const_raw_buf(), nullptr));
     }
+
     starcache::WriteOptions opts;
     opts.ttl_seconds = options->ttl_seconds;
     opts.overwrite = options->overwrite;
-    auto st = to_status(_cache->set(key, buffer.const_raw_buf(), &opts));
-    if (st.ok()) {
+    opts.async = _enable_async_write && options->async;
+    opts.callback = options->callback;
+    Status st;
+    {
+        // The memory when writing starcache is no longer recorded to the query memory.
+        // Because we free the memory in other threads in starcache library, which is hard to track.
+        // It is safe because we limit the flying memory in starcache, also, this behavior
+        // doesn't affect the process memory tracker.
+        SCOPED_THREAD_LOCAL_MEM_TRACKER_SETTER(nullptr);
+        st = to_status(_cache->set(key, buffer.const_raw_buf(), &opts));
+    }
+    if (st.ok() && !opts.async) {
         options->stats.write_mem_bytes = opts.stats.write_mem_bytes;
         options->stats.write_disk_bytes = opts.stats.write_disk_bytes;
     }
@@ -64,7 +79,11 @@ Status StarCacheWrapper::write_object(const std::string& key, const void* ptr, s
     starcache::WriteOptions opts;
     opts.ttl_seconds = options->ttl_seconds;
     opts.overwrite = options->overwrite;
-    auto st = to_status(_cache->set_object(key, ptr, size, deleter, handle, &opts));
+    Status st;
+    {
+        SCOPED_THREAD_LOCAL_MEM_TRACKER_SETTER(nullptr);
+        st = to_status(_cache->set_object(key, ptr, size, deleter, handle, &opts));
+    }
     if (st.ok()) {
         options->stats.write_mem_bytes = size;
     }

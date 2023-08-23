@@ -350,12 +350,14 @@ int main(int argc, char** argv) {
         cache_options.meta_path = starrocks::config::block_cache_meta_path;
         cache_options.block_size = starrocks::config::block_cache_block_size;
         cache_options.checksum = starrocks::config::block_cache_checksum_enable;
-        cache_options.max_parcel_memory_mb = starrocks::config::block_cache_max_parcel_memory_mb;
         cache_options.max_concurrent_inserts = starrocks::config::block_cache_max_concurrent_inserts;
         cache_options.lru_insertion_point = starrocks::config::block_cache_lru_insertion_point;
         cache_options.engine = starrocks::config::block_cache_engine;
         cache_options.enable_cache_adaptor = starrocks::config::block_cache_adaptor_enable;
         cache_options.enable_page_cache = starrocks::config::block_cache_page_cache_enable;
+        cache_options.enable_async_write = starrocks::config::block_cache_async_write_enable;
+        cache_options.scheduler_threads_per_cpu = starrocks::config::block_cache_scheduler_threads_per_cpu;
+        cache_options.max_flying_memory_mb = starrocks::config::block_cache_max_flying_memory_mb;
         EXIT_IF_ERROR(cache->init(cache_options));
     }
 

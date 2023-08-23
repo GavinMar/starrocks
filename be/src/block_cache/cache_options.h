@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -35,10 +36,13 @@ struct CacheOptions {
     bool checksum;
     std::string engine;
     size_t max_concurrent_inserts;
+    size_t max_flying_memory_mb;
+    double scheduler_threads_per_cpu;
+
     // The following options are only valid for cachelib engine currently
-    size_t max_parcel_memory_mb;
     uint8_t lru_insertion_point;
 
+    bool enable_async_write;
     bool enable_page_cache;
     bool enable_cache_adaptor;
     size_t skip_read_factor;
@@ -49,6 +53,8 @@ struct WriteCacheOptions {
     uint64_t ttl_seconds = 0;
     // If overwrite=true, the cache value will be replaced if it already exists.
     bool overwrite = true;
+    bool async = false;
+    std::function<void(int, const std::string&)> callback = nullptr;
 
     struct Stats {
         int64_t write_mem_bytes = 0;

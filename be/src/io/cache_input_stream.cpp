@@ -124,7 +124,7 @@ Status CacheInputStream::_read_block(int64_t offset, int64_t size, char* out, bo
     // read remote
     char* src = nullptr;
     if (sb) {
-        //_deduplicate_shared_buffer(sb);
+        _deduplicate_shared_buffer(sb);
         const uint8_t* buffer = nullptr;
         RETURN_IF_ERROR(_sb_stream->get_bytes(&buffer, block_offset, load_size));
         strings::memcpy_inlined(out, buffer + shift, size);
@@ -147,6 +147,7 @@ Status CacheInputStream::_read_block(int64_t offset, int64_t size, char* out, bo
     if (_enable_populate_cache && res.is_not_found()) {
         SCOPED_RAW_TIMER(&_stats.write_cache_ns);
         WriteCacheOptions options;
+        options.async = true;
         Status r = _cache->write_buffer(_cache_key, block_offset, load_size, src, &options);
         if (r.ok()) {
             _stats.write_cache_count += 1;
@@ -261,6 +262,7 @@ void CacheInputStream::_populate_cache_from_zero_copy_buffer(const char* p, int6
         SCOPED_RAW_TIMER(&_stats.write_cache_ns);
         WriteCacheOptions options;
         options.overwrite = false;
+        options.async = true;
         Status r = cache->write_buffer(_cache_key, offset, size, buf, &options);
         if (r.ok()) {
             _stats.write_cache_count += 1;
