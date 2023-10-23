@@ -1126,7 +1126,7 @@ public class SessionVariable implements Serializable, Writable, Cloneable {
     private boolean interpolatePassthrough = true;
 
     @VariableMgr.VarAttr(name = HASH_JOIN_INTERPOLATE_PASSTHROUGH, flag = VariableMgr.INVISIBLE)
-    private boolean hashJoinInterpolatePassthrough = false;
+    private boolean hashJoinInterpolatePassthrough = true;
 
     @VarAttr(name = STATISTIC_COLLECT_PARALLEL)
     private int statisticCollectParallelism = 1;
@@ -2449,6 +2449,14 @@ public class SessionVariable implements Serializable, Writable, Cloneable {
     }
     public boolean isHashJoinInterpolatePassthrough() {
         return hashJoinInterpolatePassthrough;
+    }
+
+    public boolean isHashJoinInterpolatePassthrough() {
+        return hashJoinInterpolatePassthrough;
+    }
+
+    public void setHashJoinInterpolatePassthrough(boolean value) {
+        this.hashJoinInterpolatePassthrough = value;
     }
 
     public int getParseTokensLimit() {
