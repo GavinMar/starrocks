@@ -439,6 +439,7 @@ public class SessionVariable implements Serializable, Writable, Cloneable {
         LEADER      // proxy queries to leader no matter the follower's replay progress
     }
     public static final String FOLLOWER_QUERY_FORWARD_MODE = "follower_query_forward_mode";
+    public static final String PUSH_DOWN_AGG_TO_WHICH_SIDE = "push_down_agg_to_which_side";
 
     public enum MaterializedViewRewriteMode {
         DISABLE,            // disable materialized view rewrite
@@ -1473,6 +1474,9 @@ public class SessionVariable implements Serializable, Writable, Cloneable {
     public String getCboEqBaseType() {
         return cboEqBaseType;
     }
+
+    @VarAttr(name = PUSH_DOWN_AGG_TO_WHICH_SIDE)
+    private String pushDownAggToWhichSide = SessionVariableConstants.NONE;
 
     public void setChooseExecuteInstancesMode(String mode) {
         SessionVariableConstants.ChooseInstancesMode result =
@@ -2841,6 +2845,21 @@ public class SessionVariable implements Serializable, Writable, Cloneable {
 
     public void setEnableStrictOrderBy(boolean enableStrictOrderBy) {
         this.enableStrictOrderBy = enableStrictOrderBy;
+    }
+
+    public void setPushDownAggToWhichSide(String side) {
+        if (side.equalsIgnoreCase(SessionVariableConstants.NONE) ||
+                side.equalsIgnoreCase(SessionVariableConstants.LEFT) ||
+                side.equalsIgnoreCase(SessionVariableConstants.RIGHT)) {
+            pushDownAggToWhichSide = side.toLowerCase();
+        } else {
+            throw new IllegalArgumentException(
+                    "Legal values of push_down_agg_to_which_side are none|left|right");
+        }
+    }
+
+    public String getPushDownAggToWhichSide() {
+        return pushDownAggToWhichSide;
     }
 
     // Serialize to thrift object
