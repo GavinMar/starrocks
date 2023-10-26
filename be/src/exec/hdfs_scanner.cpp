@@ -231,7 +231,7 @@ Status HdfsScanner::open_random_access_file() {
         _cache_input_stream = std::make_shared<io::CacheInputStream>(_shared_buffered_input_stream, filename, file_size,
                                                                      _scanner_params.modification_time);
         _cache_input_stream->set_enable_populate_cache(_scanner_params.enable_populate_block_cache);
-        _cache_input_stream->set_enable_block_buffer(config::block_cache_block_buffer_enable);
+        _cache_input_stream->set_enable_block_buffer(config::datacache_block_buffer_enable);
         _shared_buffered_input_stream->set_align_size(_cache_input_stream->get_align_size());
         input_stream = _cache_input_stream;
     }
@@ -246,7 +246,6 @@ Status HdfsScanner::open_random_access_file() {
                 std::make_shared<io::CompressedInputStream>(input_stream, DecompressorPtr(dec.release()));
         input_stream = std::make_shared<io::CompressedSeekableInputStream>(compressed_input_stream);
     }
-
     // input_stream = CountedInputStream(input_stream)
     // NOTE: make sure `CountedInputStream` is last applied, so io time can be accurately timed.
     input_stream = std::make_shared<CountedSeekableInputStream>(input_stream, &_app_stats);
