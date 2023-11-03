@@ -440,6 +440,9 @@ public class SessionVariable implements Serializable, Writable, Cloneable {
     }
     public static final String FOLLOWER_QUERY_FORWARD_MODE = "follower_query_forward_mode";
     public static final String PUSH_DOWN_AGG_TO_WHICH_SIDE = "push_down_agg_to_which_side";
+    public static final String ENABLE_ARRAY_DISTINCT_AFTER_AGG_OPT = "enable_array_distinct_after_agg_opt";
+
+    public static final String ENABLE_ARRAY_DISTINCT_AFTER_AGG_OPT = "enable_array_distinct_after_agg_opt";
 
     public enum MaterializedViewRewriteMode {
         DISABLE,            // disable materialized view rewrite
@@ -1450,8 +1453,14 @@ public class SessionVariable implements Serializable, Writable, Cloneable {
     @VarAttr(name = CHOOSE_EXECUTE_INSTANCES_MODE)
     private String chooseExecuteInstancesMode = LOCALITY.name();
 
+    @VarAttr(name = ENABLE_ARRAY_DISTINCT_AFTER_AGG_OPT)
+    private boolean enableArrayDistinctAfterAggOpt = true;
+
     @VarAttr(name = CROSS_JOIN_COST_PENALTY, flag = VariableMgr.INVISIBLE)
     private long crossJoinCostPenalty = 1000000;
+
+    @VarAttr(name = ENABLE_ARRAY_DISTINCT_AFTER_AGG_OPT)
+    private boolean enableArrayDistinctAfterAggOpt = true;
 
     public SessionVariableConstants.ChooseInstancesMode getChooseExecuteInstancesMode() {
         return Enums.getIfPresent(SessionVariableConstants.ChooseInstancesMode.class,
@@ -2853,6 +2862,10 @@ public class SessionVariable implements Serializable, Writable, Cloneable {
 
     public String getPushDownAggToWhichSide() {
         return pushDownAggToWhichSide;
+    }
+
+    public boolean getEnableArrayDistinctAfterAggOpt() {
+        return  enableArrayDistinctAfterAggOpt;
     }
 
     // Serialize to thrift object
