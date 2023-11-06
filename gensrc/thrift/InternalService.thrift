@@ -235,7 +235,6 @@ struct TQueryOptions {
   110: optional TQueryQueueOptions query_queue_options;
   111: optional bool enable_file_metacache;
   112: optional bool enable_pipeline_level_shuffle;
-
 }
 
 
