@@ -712,4 +712,5 @@ public class PruneComplexSubfieldTest extends PlanTestNoneDBBase {
         assertContains(plan, "5:Project\n" +
                 "  |  <slot 15> : row(1, 2, 3).col2[true] IS NULL");
     }
+
 }
