@@ -98,8 +98,8 @@ Status HiveDataSource::open(RuntimeState* state) {
     if (state->query_options().__isset.enable_populate_datacache) {
         _enable_populate_datacache = state->query_options().enable_populate_datacache;
     }
-    if (state->query_options().__isset.enable_hdfs_file_metacache) {
-        _use_file_metacache = state->query_options().enable_hdfs_file_metacache;
+    if (state->query_options().__isset.enable_file_metacache) {
+        _use_file_metacache = state->query_options().enable_file_metacache;
     }
 
     RETURN_IF_ERROR(_init_conjunct_ctxs(state));

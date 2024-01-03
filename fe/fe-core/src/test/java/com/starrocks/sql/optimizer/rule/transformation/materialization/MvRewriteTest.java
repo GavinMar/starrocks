@@ -1984,7 +1984,7 @@ public class MvRewriteTest extends MvRewriteTestBase {
     // TODO: array_agg_distinct doesn't support json
     public void testRollup_ArrayAgg() throws Exception {
         String mvName = "mv_array";
-        createAndRefreshMv("test", mvName, "CREATE MATERIALIZED VIEW `mv_array`\n" +
+        createAndRefreshMv("CREATE MATERIALIZED VIEW `mv_array`\n" +
                 "DISTRIBUTED BY HASH(`gender`) BUCKETS 2\n" +
                 "REFRESH ASYNC\n" +
                 "AS \n" +
