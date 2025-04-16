@@ -40,7 +40,7 @@ Status StarCacheWrapper::init(const CacheOptions& options) {
     opt.cache_adaptor = _cache_adaptor.get();
     opt.instance_name = "dla_cache";
     _enable_tiered_cache = options.enable_tiered_cache;
-    _cache = std::make_unique<starcache::StarCache>();
+    _cache = std::make_shared<starcache::StarCache>();
     return to_status(_cache->init(opt));
 }
 

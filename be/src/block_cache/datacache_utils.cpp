@@ -15,6 +15,7 @@
 #include "block_cache/datacache_utils.h"
 
 #include <fmt/format.h>
+#include <sys/stat.h>
 
 #include <filesystem>
 
@@ -154,6 +155,14 @@ void DataCacheUtils::clean_residual_datacache(const std::string& disk_path) {
         return true;
     });
     LOG_IF(WARNING, !st.ok()) << "fail to clean residual datacache data, reason: " << st.message();
+}
+
+dev_t DataCacheUtils::disk_device_id(const std::string& disk_path) {
+    struct stat s;
+    if (stat(disk_path.c_str(), &s) != 0) {
+        return 0;
+    }
+    return s.st_dev;
 }
 
 } // namespace starrocks
