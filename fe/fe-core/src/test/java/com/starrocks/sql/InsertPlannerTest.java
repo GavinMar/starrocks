@@ -15,8 +15,16 @@
 package com.starrocks.sql;
 
 import com.google.common.collect.Lists;
+import com.starrocks.analysis.BinaryPredicate;
+import com.starrocks.analysis.BinaryType;
+import com.starrocks.analysis.CompoundPredicate;
+import com.starrocks.analysis.Expr;
+import com.starrocks.analysis.InPredicate;
+import com.starrocks.analysis.SlotRef;
+import com.starrocks.analysis.StringLiteral;
 import com.starrocks.catalog.Column;
 import com.starrocks.catalog.IcebergTable;
+import com.starrocks.catalog.Type;
 import com.starrocks.common.jmockit.Deencapsulation;
 import com.starrocks.connector.ConnectorMetadatRequestContext;
 import com.starrocks.qe.SessionVariable;
@@ -24,21 +32,12 @@ import com.starrocks.server.GlobalStateMgr;
 import com.starrocks.server.MetadataMgr;
 import com.starrocks.server.NodeMgr;
 import com.starrocks.sql.ast.InsertStmt;
-import com.starrocks.sql.ast.PartitionRef;
+import com.starrocks.sql.ast.PartitionNames;
 import com.starrocks.sql.ast.QueryStatement;
 import com.starrocks.sql.ast.SelectRelation;
-import com.starrocks.sql.ast.expression.BinaryPredicate;
-import com.starrocks.sql.ast.expression.BinaryType;
-import com.starrocks.sql.ast.expression.CompoundPredicate;
-import com.starrocks.sql.ast.expression.Expr;
-import com.starrocks.sql.ast.expression.InPredicate;
-import com.starrocks.sql.ast.expression.SlotRef;
-import com.starrocks.sql.ast.expression.StringLiteral;
 import com.starrocks.sql.optimizer.statistics.ColumnStatistic;
 import com.starrocks.sql.optimizer.statistics.StatisticStorage;
 import com.starrocks.system.SystemInfoService;
-import com.starrocks.type.DateType;
-import com.starrocks.type.VarcharType;
 import mockit.Delegate;
 import mockit.Expectations;
 import mockit.Mocked;
@@ -171,14 +170,14 @@ public class InsertPlannerTest {
                                           @Mocked IcebergTable icebergTable,
                                           @Mocked InsertStmt insertStmt,
                                           @Mocked SessionVariable sessionVariable,
-                                          @Mocked PartitionRef partitionRef,
+                                          @Mocked PartitionNames partitionNames,
                                           @Mocked QueryStatement queryStatement,
                                           @Mocked SelectRelation selectRelation,
                                           @Mocked NodeMgr nodeMgr,
                                           @Mocked SystemInfoService clusterInfo) {
         // Setup: static partition insert, 10 backends, 0 CN
         setupMockExpectationsForAdaptiveShuffle(gsm, metadataMgr, icebergTable, insertStmt, sessionVariable,
-                queryStatement, selectRelation, 10, 0, 100, 100L, 2.0, true, partitionRef, null, false, nodeMgr, clusterInfo);
+                queryStatement, selectRelation, 10, 0, 100, 100L, 2.0, true, partitionNames, null, false, nodeMgr, clusterInfo);
 
         long partitionCount = Deencapsulation.invoke(insertPlanner, "estimatePartitionCountForInsert",
                 insertStmt, icebergTable);
@@ -356,7 +355,7 @@ public class InsertPlannerTest {
                 minTimes = 0;
 
                 icebergTable.getPartitionColumns();
-                result = Lists.newArrayList(new Column("dt", DateType.DATE));
+                result = Lists.newArrayList(new Column("dt", Type.DATE));
                 minTimes = 0;
 
                 sessionVariable.getConnectorSinkShufflePartitionThreshold();
@@ -441,7 +440,7 @@ public class InsertPlannerTest {
                 minTimes = 0;
 
                 icebergTable.getPartitionColumns();
-                result = Lists.newArrayList(new Column("dt", DateType.DATE));
+                result = Lists.newArrayList(new Column("dt", Type.DATE));
                 minTimes = 0;
 
                 GlobalStateMgr.getCurrentState();
@@ -498,7 +497,7 @@ public class InsertPlannerTest {
                 minTimes = 0;
 
                 icebergTable.getPartitionColumns();
-                result = Lists.newArrayList(new Column("dt", DateType.DATE));
+                result = Lists.newArrayList(new Column("dt", Type.DATE));
                 minTimes = 0;
             }
         };
@@ -554,8 +553,8 @@ public class InsertPlannerTest {
 
                 icebergTable.getPartitionColumns();
                 result = Lists.newArrayList(
-                        new Column("dt", DateType.DATE),
-                        new Column("country", VarcharType.VARCHAR)
+                        new Column("dt", Type.DATE),
+                        new Column("country", Type.VARCHAR)
                 );
                 minTimes = 0;
 
@@ -696,7 +695,7 @@ public class InsertPlannerTest {
                                                          long threshold,
                                                          double ratio,
                                                          boolean isStaticPartitionInsert,
-                                                         PartitionRef partitionRef,
+                                                         PartitionNames partitionNames,
                                                          Expr predicate,
                                                          boolean hasWhereClause,
                                                          NodeMgr nodeMgr,
@@ -759,8 +758,8 @@ public class InsertPlannerTest {
 
                 icebergTable.getPartitionColumns();
                 result = Lists.newArrayList(
-                        new Column("dt", DateType.DATE),
-                        new Column("country", VarcharType.VARCHAR)
+                        new Column("dt", Type.DATE),
+                        new Column("country", Type.VARCHAR)
                 );
                 minTimes = 0;
 
@@ -770,11 +769,11 @@ public class InsertPlannerTest {
                 minTimes = 0;
 
                 insertStmt.getTargetPartitionNames();
-                result = partitionRef;
+                result = partitionNames;
                 minTimes = 0;
 
-                if (partitionRef != null) {
-                    partitionRef.getPartitionColNames();
+                if (partitionNames != null) {
+                    partitionNames.getPartitionColNames();
                     result = Lists.newArrayList("p1");
                     minTimes = 0;
                 }
@@ -853,7 +852,7 @@ public class InsertPlannerTest {
                 minTimes = 0;
 
                 icebergTable.getPartitionColumns();
-                result = Lists.newArrayList(new Column("dt", DateType.DATE));
+                result = Lists.newArrayList(new Column("dt", Type.DATE));
                 minTimes = 0;
 
                 insertStmt.getQueryStatement();
@@ -936,7 +935,7 @@ public class InsertPlannerTest {
                 minTimes = 0;
 
                 icebergTable.getPartitionColumns();
-                result = Lists.newArrayList(new Column("dt", DateType.DATE));
+                result = Lists.newArrayList(new Column("dt", Type.DATE));
                 minTimes = 0;
 
                 insertStmt.getQueryStatement();
@@ -1049,7 +1048,7 @@ public class InsertPlannerTest {
                 minTimes = 0;
 
                 icebergTable.getPartitionColumns();
-                result = Lists.newArrayList(new Column("dt", DateType.DATE));
+                result = Lists.newArrayList(new Column("dt", Type.DATE));
                 minTimes = 0;
 
                 insertStmt.getQueryStatement();
@@ -1142,8 +1141,8 @@ public class InsertPlannerTest {
 
                 icebergTable.getPartitionColumns();
                 result = Lists.newArrayList(
-                        new Column("dt", DateType.DATE),
-                        new Column("country", VarcharType.VARCHAR)
+                        new Column("dt", Type.DATE),
+                        new Column("country", Type.VARCHAR)
                 );
                 minTimes = 0;
 
@@ -1237,8 +1236,8 @@ public class InsertPlannerTest {
 
                 icebergTable.getPartitionColumns();
                 result = Lists.newArrayList(
-                        new Column("dt", DateType.DATE),
-                        new Column("country", VarcharType.VARCHAR)
+                        new Column("dt", Type.DATE),
+                        new Column("country", Type.VARCHAR)
                 );
                 minTimes = 0;
 
@@ -1345,7 +1344,7 @@ public class InsertPlannerTest {
                 minTimes = 0;
 
                 icebergTable.getPartitionColumns();
-                result = Lists.newArrayList(new Column("dt", DateType.DATE));
+                result = Lists.newArrayList(new Column("dt", Type.DATE));
                 minTimes = 0;
 
                 gsm.getStatisticStorage();
@@ -1455,7 +1454,7 @@ public class InsertPlannerTest {
                 minTimes = 0;
 
                 icebergTable.getPartitionColumns();
-                result = Lists.newArrayList(new Column("dt", DateType.DATE));
+                result = Lists.newArrayList(new Column("dt", Type.DATE));
                 minTimes = 0;
 
                 gsm.getStatisticStorage();

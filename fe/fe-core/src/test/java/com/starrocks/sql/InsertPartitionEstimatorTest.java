@@ -15,8 +15,15 @@
 package com.starrocks.sql;
 
 import com.google.common.collect.Lists;
+import com.starrocks.analysis.BinaryPredicate;
+import com.starrocks.analysis.BinaryType;
+import com.starrocks.analysis.CompoundPredicate;
+import com.starrocks.analysis.Expr;
+import com.starrocks.analysis.SlotRef;
+import com.starrocks.analysis.StringLiteral;
 import com.starrocks.catalog.Column;
 import com.starrocks.catalog.IcebergTable;
+import com.starrocks.catalog.Type;
 import com.starrocks.common.jmockit.Deencapsulation;
 import com.starrocks.connector.ConnectorMetadatRequestContext;
 import com.starrocks.sql.ast.InsertStmt;
@@ -25,14 +32,7 @@ import com.starrocks.sql.ast.QueryStatement;
 import com.starrocks.sql.ast.SelectList;
 import com.starrocks.sql.ast.SelectListItem;
 import com.starrocks.sql.ast.SelectRelation;
-import com.starrocks.sql.ast.expression.BinaryPredicate;
-import com.starrocks.sql.ast.expression.BinaryType;
-import com.starrocks.sql.ast.expression.CompoundPredicate;
-import com.starrocks.sql.ast.expression.Expr;
-import com.starrocks.sql.ast.expression.SlotRef;
-import com.starrocks.sql.ast.expression.StringLiteral;
 import com.starrocks.sql.optimizer.statistics.StatisticStorage;
-import com.starrocks.type.DateType;
 import mockit.Expectations;
 import mockit.Mocked;
 import org.junit.jupiter.api.Test;
@@ -79,7 +79,7 @@ public class InsertPartitionEstimatorTest {
                 minTimes = 0;
 
                 table.getPartitionColumns();
-                result = Lists.newArrayList(new Column("dt", DateType.DATE));
+                result = Lists.newArrayList(new Column("dt", Type.DATE));
                 minTimes = 0;
 
                 // Ensure mapping build doesn't early-exit
@@ -96,7 +96,7 @@ public class InsertPartitionEstimatorTest {
                 minTimes = 0;
 
                 table.getFullSchema();
-                result = Lists.newArrayList(new Column("dt", DateType.DATE));
+                result = Lists.newArrayList(new Column("dt", Type.DATE));
                 minTimes = 0;
             }
         };
@@ -161,7 +161,7 @@ public class InsertPartitionEstimatorTest {
                 minTimes = 0;
 
                 table.getPartitionColumns();
-                result = Lists.newArrayList(new Column("dt", DateType.DATE));
+                result = Lists.newArrayList(new Column("dt", Type.DATE));
                 minTimes = 0;
 
                 insertStmt.getQueryStatement();
@@ -350,7 +350,7 @@ public class InsertPartitionEstimatorTest {
     public void testBuildSelectToTargetPartitionMapping_NullSelectList(@Mocked InsertStmt insertStmt,
                                                                         @Mocked IcebergTable table,
                                                                         @Mocked SelectRelation selectRelation) {
-        Column partCol = new Column("dt", DateType.DATE);
+        Column partCol = new Column("dt", Type.DATE);
         new Expectations() {
             {
                 table.getPartitionColumns();
@@ -376,7 +376,7 @@ public class InsertPartitionEstimatorTest {
                                                                           @Mocked IcebergTable table,
                                                                           @Mocked SelectRelation selectRelation,
                                                                           @Mocked SelectList selectList) {
-        Column partCol = new Column("dt", DateType.DATE);
+        Column partCol = new Column("dt", Type.DATE);
         new Expectations() {
             {
                 table.getPartitionColumns();
@@ -479,7 +479,7 @@ public class InsertPartitionEstimatorTest {
                 minTimes = 0;
 
                 table.getPartitionColumns();
-                result = Lists.newArrayList(new Column("dt", DateType.DATE));
+                result = Lists.newArrayList(new Column("dt", Type.DATE));
                 minTimes = 0;
 
                 gsm.getStatisticStorage();
