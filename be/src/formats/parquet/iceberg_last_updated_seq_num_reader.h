@@ -18,29 +18,28 @@
 
 namespace starrocks::parquet {
 
-// Reader for the Iceberg v3 _row_id metadata column.
+// Reader for the Iceberg v3 _last_updated_sequence_number metadata column.
 //
-// In the normal case, _row_id is computed as firstRowId + row_position.
-// After compaction (OPTIMIZE), the per-row _row_id may be stored as a physical
-// column in the Parquet file. This reader supports both modes:
+// After compaction, the per-row sequence number may be stored as a physical column
+// in the Parquet file. This reader wraps a delegate reader that reads from the
+// physical column. For rows where the physical column value is null (or when no
+// physical column exists), it falls back to the file-level dataSequenceNumber.
 //
-// 1. No delegate (physical column not in file): compute from firstRowId + position
-// 2. With delegate (physical column exists): read from file, fall back to computed
-//    value for null entries
-class IcebergRowIdReader final : public ColumnReader {
+// When no delegate is provided (physical column not in file), all rows get the
+// file-level dataSequenceNumber as a constant.
+class IcebergLastUpdatedSeqNumReader final : public ColumnReader {
 public:
-    // Constructor for computed-only mode (no physical column in file).
-    explicit IcebergRowIdReader(int64_t first_row_id) : ColumnReader(nullptr), _first_row_id(first_row_id) {
-        _cur_row_id = _first_row_id;
-    }
+    // Constructor for when no physical column exists in the file.
+    // All rows will get the fallback data_sequence_number.
+    explicit IcebergLastUpdatedSeqNumReader(int64_t data_sequence_number)
+            : ColumnReader(nullptr), _data_sequence_number(data_sequence_number), _delegate(nullptr) {}
 
-    // Constructor for hybrid mode: read from physical column, fall back to computed.
-    IcebergRowIdReader(int64_t first_row_id, std::unique_ptr<ColumnReader> delegate)
-            : ColumnReader(nullptr), _first_row_id(first_row_id), _delegate(std::move(delegate)) {
-        _cur_row_id = _first_row_id;
-    }
+    // Constructor for when a physical column exists in the file.
+    // Reads from the delegate; for null values, falls back to data_sequence_number.
+    IcebergLastUpdatedSeqNumReader(int64_t data_sequence_number, std::unique_ptr<ColumnReader> delegate)
+            : ColumnReader(nullptr), _data_sequence_number(data_sequence_number), _delegate(std::move(delegate)) {}
 
-    ~IcebergRowIdReader() override = default;
+    ~IcebergLastUpdatedSeqNumReader() override = default;
 
     Status prepare() override;
 
@@ -64,11 +63,8 @@ public:
                                               const uint64_t rg_first_row, const uint64_t rg_num_rows) override;
 
 private:
-    // Helper method to apply a single predicate and return the resulting range
-    StatusOr<bool> _apply_single_predicate(const ColumnPredicate* pred, SparseRange<int64_t>& result_range);
-
-    int64_t _first_row_id = 0;
-    int64_t _cur_row_id = 0;
+    int64_t _data_sequence_number = 0;
     std::unique_ptr<ColumnReader> _delegate;
 };
+
 } // namespace starrocks::parquet

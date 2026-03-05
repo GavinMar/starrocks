@@ -440,6 +440,10 @@ struct THdfsScanRange {
     36: optional i32 bucket_id;
 
     37: optional i64 first_row_id;
+
+    // for Iceberg v3 row lineage: fallback value for _last_updated_sequence_number
+    // when the physical column is not present in the data file
+    38: optional i64 data_sequence_number;
 }
 
 struct TBinlogScanRange {

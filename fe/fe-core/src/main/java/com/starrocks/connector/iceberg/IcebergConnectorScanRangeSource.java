@@ -359,13 +359,24 @@ public class IcebergConnectorScanRangeSource extends ConnectorScanRangeSource {
         List<SlotDescriptor> slots = desc.getSlots();
         Map<Integer, TExpr> extendedColumns = new HashMap<>();
         boolean hasRowIdColumn = false;
+        boolean hasLastUpdatedSeqNumColumn = false;
         // Late materialization adds _row_source_id and _scan_range_id along with _row_id.
         // We need to distinguish between user-requested _row_id and late materialization internal use.
         boolean hasLateMaterializationColumns = false;
         for (SlotDescriptor slot : slots) {
             String name = slot.getColumn().getName();
+            // _row_id is handled as a reserved field in BE (not an extended column).
+            // It is computed as firstRowId + row_position, or read from the physical Parquet column
+            // if present (after compaction).
             if (name.equalsIgnoreCase(ROW_ID)) {
                 hasRowIdColumn = true;
+                continue;
+            }
+            // _last_updated_sequence_number is handled as a reserved field in BE (not an extended column).
+            // It is read from the physical Parquet column if present (after compaction),
+            // or falls back to the file-level dataSequenceNumber.
+            if (name.equalsIgnoreCase(LAST_UPDATED_SEQUENCE_NUMBER)) {
+                hasLastUpdatedSeqNumColumn = true;
                 continue;
             }
             if (name.equalsIgnoreCase("_row_source_id") || name.equalsIgnoreCase("_scan_range_id")) {
@@ -374,9 +385,6 @@ public class IcebergConnectorScanRangeSource extends ConnectorScanRangeSource {
             }
             LiteralExpr value;
             if (name.equalsIgnoreCase(DATA_SEQUENCE_NUMBER)) {
-                value = LiteralExprFactory.create(String.valueOf(file.dataSequenceNumber()), IntegerType.BIGINT);
-                setExtendedColumns(slot, extendedColumns, value);
-            } else if (name.equalsIgnoreCase(LAST_UPDATED_SEQUENCE_NUMBER)) {
                 value = LiteralExprFactory.create(String.valueOf(file.dataSequenceNumber()), IntegerType.BIGINT);
                 setExtendedColumns(slot, extendedColumns, value);
             } else if (name.equalsIgnoreCase(SPEC_ID)) {
@@ -406,18 +414,26 @@ public class IcebergConnectorScanRangeSource extends ConnectorScanRangeSource {
 
         if (hasRowIdColumn) {
             // Only throw exception if user explicitly requested _row_id (not from late materialization)
+            // and the file has no firstRowId metadata.
             if (!hasLateMaterializationColumns) {
                 if (task.file() == null || task.file().firstRowId() == null) {
                     throw new StarRocksConnectorException(
                             "Iceberg v3 row lineage requires first_row_id for _row_id, file: %s", filePath);
                 }
             }
-            // Set first_row_id if available (for both user-requested and late materialization cases)
             if (task.file() != null && task.file().firstRowId() != null) {
                 hdfsScanRange.setFirst_row_id(task.file().firstRowId());
             }
         } else if (task.file() != null && task.file().firstRowId() != null) {
             hdfsScanRange.setFirst_row_id(task.file().firstRowId());
+        }
+
+        // Pass data_sequence_number for _last_updated_sequence_number fallback.
+        // After compaction, the per-row value is stored as a physical column in the file;
+        // the BE reads that column and falls back to this file-level value for rows
+        // (or files) that don't have the physical column.
+        if (hasLastUpdatedSeqNumColumn || hasRowIdColumn) {
+            hdfsScanRange.setData_sequence_number(file.dataSequenceNumber());
         }
 
         return hdfsScanRange;

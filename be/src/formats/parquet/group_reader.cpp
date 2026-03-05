@@ -34,6 +34,7 @@
 #include "exprs/expr.h"
 #include "exprs/expr_context.h"
 #include "formats/parquet/column_reader_factory.h"
+#include "formats/parquet/iceberg_last_updated_seq_num_reader.h"
 #include "formats/parquet/iceberg_row_id_reader.h"
 #include "formats/parquet/metadata.h"
 #include "formats/parquet/parquet_pos_reader.h"
@@ -58,6 +59,17 @@ GroupReader::GroupReader(GroupReaderParam& param, int row_group_number, SkipRows
                          int64_t row_group_first_row, int64_t row_group_first_row_id)
         : _row_group_first_row(row_group_first_row),
           _row_group_first_row_id(row_group_first_row_id),
+          _skip_rows_ctx(std::move(skip_rows_ctx)),
+          _param(param) {
+    _row_group_metadata = &_param.file_metadata->t_metadata().row_groups[row_group_number];
+}
+
+GroupReader::GroupReader(GroupReaderParam& param, int row_group_number, SkipRowsContextPtr skip_rows_ctx,
+                         int64_t row_group_first_row, int64_t row_group_first_row_id,
+                         int64_t data_sequence_number)
+        : _row_group_first_row(row_group_first_row),
+          _row_group_first_row_id(row_group_first_row_id),
+          _data_sequence_number(data_sequence_number),
           _skip_rows_ctx(std::move(skip_rows_ctx)),
           _param(param) {
     _row_group_metadata = &_param.file_metadata->t_metadata().row_groups[row_group_number];
@@ -376,9 +388,72 @@ Status GroupReader::_create_column_readers() {
     }
 
     if (_param.reserved_field_slots != nullptr && !_param.reserved_field_slots->empty()) {
+        // Iceberg v3 row lineage metadata columns (_row_id and _last_updated_sequence_number)
+        // may exist as physical columns in the Parquet file after compaction.
+        // Check the file schema by Iceberg field IDs to create delegate readers when available.
+        static constexpr int32_t ICEBERG_ROW_ID_FIELD_ID = 2147483540;
+        static constexpr int32_t ICEBERG_LAST_UPDATED_SEQ_NUM_FIELD_ID = 2147483539;
+
         for (const auto* slot : *_param.reserved_field_slots) {
             if (slot->col_name() == HdfsScanner::ICEBERG_ROW_ID) {
-                _column_readers.emplace(slot->id(), std::make_unique<IcebergRowIdReader>(_row_group_first_row_id));
+                // Check if _row_id exists as a physical column in the Parquet file
+                const ParquetField* physical_field =
+                        _param.file_metadata->schema().get_stored_column_by_field_id(ICEBERG_ROW_ID_FIELD_ID);
+                if (physical_field != nullptr) {
+                    // Physical column exists (e.g., after compaction) — create reader with delegate
+                    int32_t field_idx =
+                            _param.file_metadata->schema().get_field_idx_by_field_id(ICEBERG_ROW_ID_FIELD_ID);
+                    auto parquet_type = physical_field->physical_type;
+                    GroupReaderParam::Column col;
+                    col.idx_in_parquet = field_idx;
+                    col.type_in_parquet = parquet_type;
+                    col.slot_desc = const_cast<SlotDescriptor*>(slot);
+                    col.t_lake_schema_field = nullptr;
+                    col.decode_needed = true;
+                    auto result = _create_column_reader(col);
+                    if (result.ok()) {
+                        _column_readers.emplace(slot->id(), std::make_unique<IcebergRowIdReader>(
+                                                                    _row_group_first_row_id, std::move(result.value())));
+                    } else {
+                        // Fallback to computed-only reader if delegate creation fails
+                        _column_readers.emplace(slot->id(),
+                                                std::make_unique<IcebergRowIdReader>(_row_group_first_row_id));
+                    }
+                } else {
+                    _column_readers.emplace(slot->id(),
+                                            std::make_unique<IcebergRowIdReader>(_row_group_first_row_id));
+                }
+            } else if (slot->col_name() == HdfsScanner::ICEBERG_LAST_UPDATED_SEQUENCE_NUMBER) {
+                // Check if _last_updated_sequence_number exists as a physical column
+                const ParquetField* physical_field = _param.file_metadata->schema().get_stored_column_by_field_id(
+                        ICEBERG_LAST_UPDATED_SEQ_NUM_FIELD_ID);
+                if (physical_field != nullptr) {
+                    // Physical column exists — create reader with delegate
+                    int32_t field_idx = _param.file_metadata->schema().get_field_idx_by_field_id(
+                            ICEBERG_LAST_UPDATED_SEQ_NUM_FIELD_ID);
+                    auto parquet_type = physical_field->physical_type;
+                    GroupReaderParam::Column col;
+                    col.idx_in_parquet = field_idx;
+                    col.type_in_parquet = parquet_type;
+                    col.slot_desc = const_cast<SlotDescriptor*>(slot);
+                    col.t_lake_schema_field = nullptr;
+                    col.decode_needed = true;
+                    auto result = _create_column_reader(col);
+                    if (result.ok()) {
+                        _column_readers.emplace(
+                                slot->id(), std::make_unique<IcebergLastUpdatedSeqNumReader>(
+                                                    _data_sequence_number, std::move(result.value())));
+                    } else {
+                        // Fallback to constant reader
+                        _column_readers.emplace(
+                                slot->id(),
+                                std::make_unique<IcebergLastUpdatedSeqNumReader>(_data_sequence_number));
+                    }
+                } else {
+                    // No physical column — use file-level dataSequenceNumber as constant
+                    _column_readers.emplace(
+                            slot->id(), std::make_unique<IcebergLastUpdatedSeqNumReader>(_data_sequence_number));
+                }
             } else if (slot->col_name() == "_row_source_id") {
                 if (auto opt = get_backend_id(); opt.has_value()) {
                     _column_readers.emplace(slot->id(), std::make_unique<RowSourceReader>(opt.value()));

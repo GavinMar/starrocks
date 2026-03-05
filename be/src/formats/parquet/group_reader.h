@@ -121,6 +121,8 @@ public:
                 int64_t row_group_first_row);
     GroupReader(GroupReaderParam& param, int row_group_number, SkipRowsContextPtr skip_rows_ctx,
                 int64_t row_group_first_row, int64_t row_group_first_row_id);
+    GroupReader(GroupReaderParam& param, int row_group_number, SkipRowsContextPtr skip_rows_ctx,
+                int64_t row_group_first_row, int64_t row_group_first_row_id, int64_t data_sequence_number);
     ~GroupReader();
 
     // init used to init column reader, and devide active/lazy
@@ -176,6 +178,7 @@ private:
     const tparquet::RowGroup* _row_group_metadata = nullptr;
     int64_t _row_group_first_row = 0;
     int64_t _row_group_first_row_id = 0;
+    int64_t _data_sequence_number = 0;
     SkipRowsContextPtr _skip_rows_ctx;
 
     // column readers for column chunk in row group
