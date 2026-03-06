@@ -180,7 +180,7 @@ public class IcebergConnectorScanRangeSourceTest extends TableTestBase {
     }
 
     @Test
-    public void testBuildScanRangeContainsDataSequenceNumberForLastUpdatedSeqNum() throws Exception {
+    public void testBuildScanRangeContainsLastUpdatedSequenceNumberExtendedColumn() throws Exception {
         TupleDescriptor localTupleDescriptor = new TupleDescriptor(new TupleId(2));
         SlotDescriptor idSlot = new SlotDescriptor(new SlotId(1), localTupleDescriptor);
         idSlot.setType(INT);
@@ -210,12 +210,13 @@ public class IcebergConnectorScanRangeSourceTest extends TableTestBase {
         long partitionId = scanRangeSource.addPartition(fileScanTask);
         THdfsScanRange hdfsScanRange = scanRangeSource.buildScanRange(fileScanTask, fileScanTask.file(), partitionId);
 
-        // _last_updated_sequence_number is now a reserved field (not an extended column).
-        // The data_sequence_number is passed in the scan range for BE to use as fallback.
-        Assertions.assertFalse(
+        // _last_updated_sequence_number is passed as an extended column (with dataSequenceNumber value)
+        // but NOT registered as an extended slot (so BE treats it as a reserved field).
+        Assertions.assertTrue(
                 hdfsScanRange.getExtended_columns().containsKey(lastUpdatedSequenceNumberSlot.getId().asInt()));
-        Assertions.assertTrue(hdfsScanRange.isSetData_sequence_number());
-        Assertions.assertEquals(fileScanTask.file().dataSequenceNumber(), hdfsScanRange.getData_sequence_number());
+        // It should NOT be in the extendedColumnSlotIds list
+        Assertions.assertFalse(scanRangeSource.getExtendedColumnSlotIds().contains(
+                lastUpdatedSequenceNumberSlot.getId().asInt()));
     }
 
     @Test

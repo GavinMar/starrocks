@@ -272,13 +272,9 @@ Status FileReader::_init_group_readers() {
     _group_reader_param.file_size = _file_size;
     _group_reader_param.datacache_options = &_datacache_options;
     _group_reader_param.scan_range_id = fd_scanner_ctx.scan_range_id;
+    _group_reader_param.scan_range = fd_scanner_ctx.scan_range;
 
     int64_t row_group_first_row_id = _scanner_ctx->scan_range->first_row_id;
-    int64_t data_sequence_number = 0;
-    bool has_data_sequence_number = _scanner_ctx->scan_range->__isset.data_sequence_number;
-    if (has_data_sequence_number) {
-        data_sequence_number = _scanner_ctx->scan_range->data_sequence_number;
-    }
     int64_t row_group_first_row = 0;
     // select and create row group readers.
     for (size_t i = 0; i < _file_metadata->t_metadata().row_groups.size(); i++) {
@@ -295,15 +291,8 @@ Status FileReader::_init_group_readers() {
             continue;
         }
 
-        std::shared_ptr<GroupReader> row_group_reader;
-        if (has_data_sequence_number) {
-            row_group_reader = std::make_shared<GroupReader>(_group_reader_param, i, _skip_rows_ctx,
-                                                             row_group_first_row, row_group_first_row_id,
-                                                             data_sequence_number);
-        } else {
-            row_group_reader = std::make_shared<GroupReader>(_group_reader_param, i, _skip_rows_ctx,
-                                                             row_group_first_row, row_group_first_row_id);
-        }
+        auto row_group_reader = std::make_shared<GroupReader>(_group_reader_param, i, _skip_rows_ctx,
+                                                              row_group_first_row, row_group_first_row_id);
         RETURN_IF_ERROR(row_group_reader->init());
 
         _group_reader_param.stats->parquet_total_row_groups += 1;

@@ -108,9 +108,6 @@ public class IcebergTable extends Table {
     public static final String EQUALITY_DELETE_TABLE_COMMENT = "equality_delete_table_comment";
     public static final String ROW_ID = "_row_id";
     public static final String LAST_UPDATED_SEQUENCE_NUMBER = "_last_updated_sequence_number";
-    // Iceberg metadata column field IDs (from org.apache.iceberg.MetadataColumns)
-    public static final int ROW_ID_FIELD_ID = MetadataColumns.ROW_ID.fieldId();
-    public static final int LAST_UPDATED_SEQUENCE_NUMBER_FIELD_ID = MetadataColumns.LAST_UPDATED_SEQUENCE_NUMBER.fieldId();
     public static final String FILE_PATH = MetadataColumns.FILE_PATH.name();
     public static final String ROW_POSITION = MetadataColumns.ROW_POSITION.name();
 

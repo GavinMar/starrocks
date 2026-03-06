@@ -359,7 +359,6 @@ public class IcebergConnectorScanRangeSource extends ConnectorScanRangeSource {
         List<SlotDescriptor> slots = desc.getSlots();
         Map<Integer, TExpr> extendedColumns = new HashMap<>();
         boolean hasRowIdColumn = false;
-        boolean hasLastUpdatedSeqNumColumn = false;
         // Late materialization adds _row_source_id and _scan_range_id along with _row_id.
         // We need to distinguish between user-requested _row_id and late materialization internal use.
         boolean hasLateMaterializationColumns = false;
@@ -372,13 +371,6 @@ public class IcebergConnectorScanRangeSource extends ConnectorScanRangeSource {
                 hasRowIdColumn = true;
                 continue;
             }
-            // _last_updated_sequence_number is handled as a reserved field in BE (not an extended column).
-            // It is read from the physical Parquet column if present (after compaction),
-            // or falls back to the file-level dataSequenceNumber.
-            if (name.equalsIgnoreCase(LAST_UPDATED_SEQUENCE_NUMBER)) {
-                hasLastUpdatedSeqNumColumn = true;
-                continue;
-            }
             if (name.equalsIgnoreCase("_row_source_id") || name.equalsIgnoreCase("_scan_range_id")) {
                 hasLateMaterializationColumns = true;
                 continue;
@@ -387,6 +379,9 @@ public class IcebergConnectorScanRangeSource extends ConnectorScanRangeSource {
             if (name.equalsIgnoreCase(DATA_SEQUENCE_NUMBER)) {
                 value = LiteralExprFactory.create(String.valueOf(file.dataSequenceNumber()), IntegerType.BIGINT);
                 setExtendedColumns(slot, extendedColumns, value);
+            } else if (name.equalsIgnoreCase(LAST_UPDATED_SEQUENCE_NUMBER)) {
+                value = LiteralExprFactory.create(String.valueOf(file.dataSequenceNumber()), IntegerType.BIGINT);
+                setExtendedColumns(slot, extendedColumns, value, false);
             } else if (name.equalsIgnoreCase(SPEC_ID)) {
                 value = LiteralExprFactory.create(String.valueOf(file.specId()), IntegerType.INT);
                 setExtendedColumns(slot, extendedColumns, value);
@@ -428,20 +423,23 @@ public class IcebergConnectorScanRangeSource extends ConnectorScanRangeSource {
             hdfsScanRange.setFirst_row_id(task.file().firstRowId());
         }
 
-        // Pass data_sequence_number for _last_updated_sequence_number fallback.
-        // After compaction, the per-row value is stored as a physical column in the file;
-        // the BE reads that column and falls back to this file-level value for rows
-        // (or files) that don't have the physical column.
-        if (hasLastUpdatedSeqNumColumn || hasRowIdColumn) {
-            hdfsScanRange.setData_sequence_number(file.dataSequenceNumber());
-        }
-
         return hdfsScanRange;
     }
 
     private void setExtendedColumns(SlotDescriptor slot, Map<Integer, TExpr> extendedColumns, LiteralExpr value) {
+        setExtendedColumns(slot, extendedColumns, value, true);
+    }
+
+    /**
+     * Puts the value into the extended_columns map for BE to access.
+     * When registerExtendedSlot is false, the slot is NOT added to extendedColumnSlotIds,
+     * so BE treats it as a reserved field and can attempt physical column read first
+     * (e.g. _last_updated_sequence_number after compaction), falling back to the extended value.
+     */
+    private void setExtendedColumns(SlotDescriptor slot, Map<Integer, TExpr> extendedColumns, LiteralExpr value,
+                                    boolean registerExtendedSlot) {
         extendedColumns.put(slot.getId().asInt(), ExprToThrift.treeToThrift(value));
-        if (!extendedColumnSlotIds.contains(slot.getId().asInt())) {
+        if (registerExtendedSlot && !extendedColumnSlotIds.contains(slot.getId().asInt())) {
             extendedColumnSlotIds.add(slot.getId().asInt());
         }
     }

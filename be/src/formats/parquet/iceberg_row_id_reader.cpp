@@ -16,76 +16,26 @@
 
 #include <limits>
 
-#include "column/nullable_column.h"
 #include "formats/parquet/predicate_filter_evaluator.h"
 #include "storage/range.h"
 #include "types/datum.h"
 
 namespace starrocks::parquet {
 
-Status IcebergRowIdReader::prepare() {
-    if (_delegate) {
-        return _delegate->prepare();
-    }
-    return Status::OK();
-}
-
 Status IcebergRowIdReader::read_range(const Range<uint64_t>& range, const Filter* filter, ColumnPtr& dst) {
-    if (!_delegate) {
-        // No physical column — compute row IDs from firstRowId + position
-        Column* dst_col = dst->as_mutable_raw_ptr();
-        if (filter == nullptr) {
-            for (uint64_t i = range.begin(); i < range.end(); ++i) {
-                int64_t row_id = _first_row_id + i;
-                dst_col->append_datum(Datum(row_id));
-            }
-        } else {
-            DCHECK_EQ(filter->size(), range.span_size()) << "Filter size must match range size";
-            for (uint64_t i = range.begin(); i < range.end(); ++i) {
-                size_t filter_index = i - range.begin();
-                if ((*filter)[filter_index]) {
-                    int64_t row_id = _first_row_id + i;
-                    dst_col->append_datum(Datum(row_id));
-                }
-            }
-        }
-        return Status::OK();
-    }
-
-    // Physical column exists — read from it, replace nulls with computed values.
-    auto nullable_col = NullableColumn::create(dst->clone_empty(), NullColumn::create());
-    RETURN_IF_ERROR(_delegate->read_range(range, filter, nullable_col));
-
     Column* dst_col = dst->as_mutable_raw_ptr();
-    size_t num_rows = nullable_col->size();
-    auto* null_col = nullable_col->null_column().get();
-    auto* data_col = nullable_col->data_column().get();
-
-    // We need to map output rows back to their position in the range.
-    // When filter is applied, we only have rows that passed the filter.
     if (filter == nullptr) {
-        size_t idx = 0;
         for (uint64_t i = range.begin(); i < range.end(); ++i) {
-            if (idx < num_rows && !null_col->get_data()[idx]) {
-                dst_col->append_datum(data_col->get(idx));
-            } else {
-                int64_t row_id = _first_row_id + i;
-                dst_col->append_datum(Datum(row_id));
-            }
-            idx++;
+            int64_t row_id = _first_row_id + i;
+            dst_col->append_datum(Datum(row_id));
         }
     } else {
-        size_t idx = 0;
+        DCHECK_EQ(filter->size(), range.span_size()) << "Filter size must match range size";
         for (uint64_t i = range.begin(); i < range.end(); ++i) {
             size_t filter_index = i - range.begin();
             if ((*filter)[filter_index]) {
-                if (idx < num_rows && !null_col->get_data()[idx]) {
-                    dst_col->append_datum(data_col->get(idx));
-                } else {
-                    int64_t row_id = _first_row_id + i;
-                    dst_col->append_datum(Datum(row_id));
-                }
-                idx++;
+                int64_t row_id = _first_row_id + i;
+                dst_col->append_datum(Datum(row_id));
             }
         }
     }
@@ -95,19 +45,6 @@ Status IcebergRowIdReader::read_range(const Range<uint64_t>& range, const Filter
 Status IcebergRowIdReader::fill_dst_column(ColumnPtr& dst, ColumnPtr& src) {
     dst->as_mutable_raw_ptr()->swap_column(*(src->as_mutable_raw_ptr()));
     return Status::OK();
-}
-
-void IcebergRowIdReader::collect_column_io_range(std::vector<io::SharedBufferedInputStream::IORange>* ranges,
-                                                 int64_t* end_offset, ColumnIOTypeFlags types, bool active) {
-    if (_delegate) {
-        _delegate->collect_column_io_range(ranges, end_offset, types, active);
-    }
-}
-
-void IcebergRowIdReader::select_offset_index(const SparseRange<uint64_t>& range, const uint64_t rg_first_row) {
-    if (_delegate) {
-        _delegate->select_offset_index(range, rg_first_row);
-    }
 }
 
 StatusOr<bool> IcebergRowIdReader::row_group_zone_map_filter(const std::vector<const ColumnPredicate*>& predicates,
@@ -127,6 +64,7 @@ StatusOr<bool> IcebergRowIdReader::page_index_zone_map_filter(const std::vector<
     SparseRange<int64_t> row_id_range(_first_row_id + rg_first_row, _first_row_id + rg_first_row + rg_num_rows);
 
     if (pred_relation == CompoundNodeType::AND) {
+        // AND: intersect all predicate ranges sequentially
         for (const auto& pred : predicates) {
             SparseRange<int64_t> pred_range;
             StatusOr<bool> result = _apply_single_predicate(pred, pred_range);
@@ -142,6 +80,7 @@ StatusOr<bool> IcebergRowIdReader::page_index_zone_map_filter(const std::vector<
             }
         }
     } else if (pred_relation == CompoundNodeType::OR) {
+        // OR: union all predicate ranges, then intersect with row group range
         SparseRange<int64_t> union_range;
         bool has_valid_predicate = false;
 
@@ -171,6 +110,7 @@ StatusOr<bool> IcebergRowIdReader::page_index_zone_map_filter(const std::vector<
         return false;
     }
 
+    // Convert row_id ranges back to row-group-relative row ranges
     for (size_t i = 0; i < row_id_range.size(); i++) {
         Range<int64_t> range = row_id_range[i];
         row_ranges->add(Range<uint64_t>(range.begin() - _first_row_id, range.end() - _first_row_id));
@@ -179,6 +119,8 @@ StatusOr<bool> IcebergRowIdReader::page_index_zone_map_filter(const std::vector<
     return true;
 }
 
+// Convert a single predicate on _row_id into a SparseRange of matching row_id values.
+// Returns true if the predicate was converted, false if unsupported.
 StatusOr<bool> IcebergRowIdReader::_apply_single_predicate(const ColumnPredicate* pred,
                                                            SparseRange<int64_t>& result_range) {
     switch (pred->type()) {
@@ -230,6 +172,7 @@ StatusOr<bool> IcebergRowIdReader::_apply_single_predicate(const ColumnPredicate
         return true;
     }
     case PredicateType::kNotInList: {
+        // Start with full range, then subtract each excluded value
         const auto& values = pred->values();
         if (values.empty()) {
             result_range = SparseRange<int64_t>(0, std::numeric_limits<int64_t>::max());

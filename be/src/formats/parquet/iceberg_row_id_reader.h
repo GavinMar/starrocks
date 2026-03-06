@@ -18,31 +18,15 @@
 
 namespace starrocks::parquet {
 
-// Reader for the Iceberg v3 _row_id metadata column.
-//
-// In the normal case, _row_id is computed as firstRowId + row_position.
-// After compaction (OPTIMIZE), the per-row _row_id may be stored as a physical
-// column in the Parquet file. This reader supports both modes:
-//
-// 1. No delegate (physical column not in file): compute from firstRowId + position
-// 2. With delegate (physical column exists): read from file, fall back to computed
-//    value for null entries
 class IcebergRowIdReader final : public ColumnReader {
 public:
-    // Constructor for computed-only mode (no physical column in file).
     explicit IcebergRowIdReader(int64_t first_row_id) : ColumnReader(nullptr), _first_row_id(first_row_id) {
-        _cur_row_id = _first_row_id;
-    }
-
-    // Constructor for hybrid mode: read from physical column, fall back to computed.
-    IcebergRowIdReader(int64_t first_row_id, std::unique_ptr<ColumnReader> delegate)
-            : ColumnReader(nullptr), _first_row_id(first_row_id), _delegate(std::move(delegate)) {
         _cur_row_id = _first_row_id;
     }
 
     ~IcebergRowIdReader() override = default;
 
-    Status prepare() override;
+    Status prepare() override { return Status::OK(); }
 
     Status read_range(const Range<uint64_t>& range, const Filter* filter, ColumnPtr& dst) override;
     void get_levels(level_t** def_levels, level_t** rep_levels, size_t* num_levels) override {}
@@ -51,9 +35,9 @@ public:
     Status fill_dst_column(ColumnPtr& dst, ColumnPtr& src) override;
 
     void collect_column_io_range(std::vector<io::SharedBufferedInputStream::IORange>* ranges, int64_t* end_offset,
-                                 ColumnIOTypeFlags types, bool active) override;
+                                 ColumnIOTypeFlags types, bool active) override {}
 
-    void select_offset_index(const SparseRange<uint64_t>& range, const uint64_t rg_first_row) override;
+    void select_offset_index(const SparseRange<uint64_t>& range, const uint64_t rg_first_row) override {}
 
     StatusOr<bool> row_group_zone_map_filter(const std::vector<const ColumnPredicate*>& predicates,
                                              CompoundNodeType pred_relation, const uint64_t rg_first_row,
@@ -69,6 +53,5 @@ private:
 
     int64_t _first_row_id = 0;
     int64_t _cur_row_id = 0;
-    std::unique_ptr<ColumnReader> _delegate;
 };
 } // namespace starrocks::parquet

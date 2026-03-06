@@ -89,7 +89,6 @@ ADD_BE_LIB(Formats
         parquet/statistics_helper.cpp
         parquet/parquet_block_split_bloom_filter.cpp
         parquet/iceberg_row_id_reader.cpp
-        parquet/iceberg_last_updated_seq_num_reader.cpp
         parquet/row_source_reader.cpp
         parquet/parquet_pos_reader.cpp
         column_evaluator.cpp
